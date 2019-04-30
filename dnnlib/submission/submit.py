@@ -54,21 +54,37 @@ class SubmitConfig(util.EasyDict):
     """Strongly typed config dict needed to submit runs.
 
     Attributes:
-        run_dir_root: Path to the run dir root. Can be optionally templated with tags. Needs to always be run through get_path_from_template.
+        run_dir_root: Path to the run dir root. Can be optionally templated with tags.
+                        Needs to always be run through get_path_from_template.
         run_desc: Description of the run. Will be used in the run dir and task name.
+
         run_dir_ignore: List of file patterns used to ignore files when copying files to the run dir.
-        run_dir_extra_files: List of (abs_path, rel_path) tuples of file paths. rel_path root will be the src directory inside the run dir.
+
+        run_dir_extra_files: List of (abs_path, rel_path) tuples of file paths.
+                            rel_path root will be the src directory inside the run dir.
         submit_target: Submit target enum value. Used to select where the run is actually launched.
+
         num_gpus: Number of GPUs used/requested for the run.
+
         print_info: Whether to print debug information when submitting.
+
         ask_confirmation: Whether to ask a confirmation before submitting.
+
         run_id: Automatically populated value during submit.
+
         run_name: Automatically populated value during submit.
+
         run_dir: Automatically populated value during submit.
+
         run_func_name: Automatically populated value during submit.
+
         run_func_kwargs: Automatically populated value during submit.
-        user_name: Automatically populated value during submit. Can be set by the user which will then override the automatic value.
+
+        user_name: Automatically populated value during submit.
+                    Can be set by the user which will then override the automatic value.
+
         task_name: Automatically populated value during submit.
+
         host_name: Automatically populated value during submit.
     """
 
@@ -104,7 +120,7 @@ def get_path_from_template(path_template: str, path_type: PathType = PathType.AU
     if path_type == PathType.AUTO:
         if platform.system() == "Windows":
             path_type = PathType.WINDOWS
-        elif platform.system() == "Linux":
+        elif platform.system() == "Linux"  or platform.system() == 'Darwin':
             path_type = PathType.LINUX
         else:
             raise RuntimeError("Unknown platform")
@@ -142,11 +158,12 @@ def set_user_name_override(name: str) -> None:
 
 def get_user_name():
     """Get the current user name."""
+    print("platform: ",platform.system())
     if _user_name_override is not None:
         return _user_name_override
     elif platform.system() == "Windows":
         return os.getlogin()
-    elif platform.system() == "Linux":
+    elif platform.system() == "Linux" or platform.system() == 'Darwin':
         try:
             import pwd # pylint: disable=import-error
             return pwd.getpwuid(os.geteuid()).pw_name # pylint: disable=no-member
@@ -261,7 +278,12 @@ def run_wrapper(submit_config: SubmitConfig) -> None:
 
 
 def submit_run(submit_config: SubmitConfig, run_func_name: str, **run_func_kwargs) -> None:
-    """Create a run dir, gather files related to the run, copy files to the run dir, and launch the run in appropriate place."""
+    """
+        Create a run dir,
+        gather files related to the run,
+        copy files to the run dir,
+        and launch the run in appropriate place.
+    """
     submit_config = copy.copy(submit_config)
 
     if submit_config.user_name is None:
@@ -273,7 +295,6 @@ def submit_run(submit_config: SubmitConfig, run_func_name: str, **run_func_kwarg
     assert submit_config.submit_target == SubmitTarget.LOCAL
     if submit_config.submit_target in {SubmitTarget.LOCAL}:
         run_dir = _create_run_dir_local(submit_config)
-
         submit_config.task_name = "{0}-{1:05d}-{2}".format(submit_config.user_name, submit_config.run_id, submit_config.run_desc)
         submit_config.run_dir = run_dir
         _populate_run_dir(run_dir, submit_config)
